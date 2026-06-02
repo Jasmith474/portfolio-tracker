@@ -63,7 +63,7 @@ function buildChartData(tickerIds, days) {
   })
 }
 
-const RANGE_DAYS = { '1M': 30, '3M': 57, 'YTD': 57 }
+const RANGE_DAYS = { '1W': 7, '1M': 30, '3M': 57, '6M': 57, 'ALL': 57 }
 
 // ─── COMPONENTS ──────────────────────────────────────────────────────────────
 const TAG_STYLE = {
