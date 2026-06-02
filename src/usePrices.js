@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+iimport { useState, useEffect } from 'react'
 
 const CACHE_TTL = 300000
 
@@ -44,24 +44,15 @@ export function usePrices() {
         return
       }
       try {
-        const syms = ['QQQM','SOXX','AVGO','MU','SMH','FNCMX','FSELX','VTI']
-        const pairs = await Promise.all(syms.map(async function(s) {
-          const url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + s + '?interval=1d&range=1d'
-          const res = await fetch(url, { headers: { 'Accept': 'application/json' } })
-          const json = await res.json()
-          const meta = json.chart.result[0].meta
-          const price = meta.regularMarketPrice
-          const prev = meta.previousClose
-          const change = price - prev
-          const changePct = (change / prev) * 100
-          return [s, { price: price, change: change, changePct: changePct }]
-        }))
-        const data = Object.fromEntries(pairs)
+        const res = await fetch('/api/prices')
+        if (!res.ok) throw new Error('Proxy error ' + res.status)
+        const data = await res.json()
+        if (!data || data.error || Object.keys(data).length === 0) throw new Error('Empty')
         setCache(data)
         setPrices(data)
         setIsDemo(false)
       } catch(e) {
-        console.warn('Yahoo fetch failed:', e.message)
+        console.warn('Live prices failed:', e.message)
         setPrices(DEMO)
         setIsDemo(true)
       }
