@@ -11,7 +11,11 @@ export default async function handler(req, res) {
         if (!r.ok) throw new Error(`FMP ${r.status} for ${sym}`)
         const json = await r.json()
         const q = Array.isArray(json) ? json[0] : json
-        return [sym, { price: q?.price, change: q?.change, changePct: q?.changesPercentage }]
+        return [sym, {
+          price: q?.price,
+          change: q?.change,
+          changePct: q?.changePercentage
+        }]
       })
     )
     const data = Object.fromEntries(results)
