@@ -1,5 +1,8 @@
+open ~/Downloads/portfolio-app/src/usePrices.js
+\ open ~/Downloads/portfolio-app/src/usePrices.js
 import { useState, useEffect } from 'react'
 
+const FMP_KEY = import.meta.env.VITE_FMP_KEY
 const CACHE_TTL = 5 * 60 * 1000
 
 function getCached() {
@@ -44,16 +47,29 @@ export function usePrices() {
     async function fetchPrices() {
       const cached = getCached()
       if (cached) { setPrices(cached); setIsDemo(false); setLoading(false); return }
+
+      if (!FMP_KEY) {
+        setPrices(fallbackDemo()); setIsDemo(true); setLoading(false); return
+      }
+
       try {
-        const res = await fetch('/api/prices')
-        if (!res.ok) throw new Error(`Proxy error ${res.status}`)
-        const data = await res.json()
-        if (!data || data.error || Object.keys(data).length === 0) throw new Error(data?.error || 'Empty')
+        const symbols = ['QQQM','SOXX','AVGO','MU','SMH','FNCMX','FSELX','VTI']
+        const results = await Promise.all(
+          symbols.map(async (sym) => {
+            const url = `https://financialmodelingprep.com/stable/quote?symbol=${sym}&apikey=${FMP_KEY}`
+            const r = await fetch(url)
+            if (!r.ok) throw new Error(`FMP ${r.status}`)
+            const json = await r.json()
+            const q = Array.isArray(json) ? json[0] : json
+            return [sym, { price: q?.price, change: q?.change, changePct: q?.changePercentage }]
+          })
+        )
+        const data = Object.fromEntries(results)
         setCache(data)
         setPrices(data)
         setIsDemo(false)
       } catch (e) {
-        console.warn('Live prices unavailable:', e.message)
+        console.warn('Live prices failed:', e.message)
         setPrices(fallbackDemo())
         setIsDemo(true)
       } finally {
@@ -63,5 +79,4 @@ export function usePrices() {
     fetchPrices()
   }, [])
 
-  return { prices, loading, isDemo }
-}
+  return { prices, loading, isDemo open ~/Downloads/portfolio-app/src/usePrices.js

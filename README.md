@@ -59,3 +59,4 @@ Open http://localhost:5173
 ## Updating positions
 Edit `src/positions.js` — the `JORDAN_ACCOUNTS` and `EMILY_POSITIONS` objects.
 Commit and push → Vercel auto-redeploys.
+# Smith Portfolio
