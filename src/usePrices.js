@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 
-const FMP_KEY = import.meta.env.VITE_FMP_KEY
 const CACHE_TTL = 300000
 
 function getCached() {
@@ -44,26 +43,25 @@ export function usePrices() {
         setLoading(false)
         return
       }
-      if (!FMP_KEY) {
-        setPrices(DEMO)
-        setIsDemo(true)
-        setLoading(false)
-        return
-      }
       try {
         const syms = ['QQQM','SOXX','AVGO','MU','SMH','FNCMX','FSELX','VTI']
         const pairs = await Promise.all(syms.map(async function(s) {
-          const url = 'https://financialmodelingprep.com/stable/quote?symbol=' + s + '&apikey=' + FMP_KEY
-          const res = await fetch(url)
+          const url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + s + '?interval=1d&range=1d'
+          const res = await fetch(url, { headers: { 'Accept': 'application/json' } })
           const json = await res.json()
-          const q = Array.isArray(json) ? json[0] : json
-          return [s, { price: q.price, change: q.change, changePct: q.changePercentage }]
+          const meta = json.chart.result[0].meta
+          const price = meta.regularMarketPrice
+          const prev = meta.previousClose
+          const change = price - prev
+          const changePct = (change / prev) * 100
+          return [s, { price: price, change: change, changePct: changePct }]
         }))
         const data = Object.fromEntries(pairs)
         setCache(data)
         setPrices(data)
         setIsDemo(false)
       } catch(e) {
+        console.warn('Yahoo fetch failed:', e.message)
         setPrices(DEMO)
         setIsDemo(true)
       }
