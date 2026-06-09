@@ -1,73 +1,79 @@
-// api/prices.js  –  Smith Portfolio price proxy
-// Fetches current quotes + historical data for chart ranges
-// Requires VITE_FMP_KEY environment variable in Vercel
+// api/prices.js — Smith Portfolio price proxy
+// Uses Yahoo Finance for both quotes and history (no API key required)
 
 const SYMBOLS = ['QQQM','SOXX','AVGO','MU','SMH','FNCMX','FSELX','VTI']
-const BASE = 'https://financialmodelingprep.com/api/v3'
+const YF_BASE = 'https://query1.finance.yahoo.com/v8/finance/chart'
 
-// How many calendar days back each range needs
-const RANGE_DAYS = { '1W': 10, '1M': 35, '3M': 100, '6M': 190, '1Y': 370, 'ALL': 1500 }
+// Map our range labels to Yahoo Finance range param
+const YF_RANGE = {
+  '1W': '5d',
+  '1M': '1mo',
+  '3M': '3mo',
+  '6M': '6mo',
+  '1Y': '1y',
+  'ALL': '5y',
+}
 
-function dateStr(daysBack) {
-  const d = new Date()
-  d.setDate(d.getDate() - daysBack)
-  return d.toISOString().split('T')[0]
+const HEADERS = {
+  'Accept': 'application/json',
+  'User-Agent': 'Mozilla/5.0'
 }
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'GET')
 
-  const key = process.env.VITE_FMP_KEY
-  if (!key) return res.status(500).json({ error: 'Missing VITE_FMP_KEY' })
-
-  const mode = req.query.mode || 'quotes'   // 'quotes' | 'history'
+  const mode  = req.query.mode  || 'quotes'
   const range = req.query.range || '3M'
 
   try {
     // ── MODE 1: current quotes (card prices) ─────────────────────────────────
     if (mode === 'quotes') {
-      const url = `${BASE}/quote/${SYMBOLS.join(',')}?apikey=${key}`
-      const r = await fetch(url)
-      if (!r.ok) throw new Error(`FMP quotes ${r.status}`)
-      const raw = await r.json()
-      if (!Array.isArray(raw) || raw.length === 0) throw new Error('Empty quotes')
-
-      const data = {}
-      raw.forEach(q => {
-        data[q.symbol] = {
-          price:     q.price,
-          change:    q.change,
-          changePct: q.changesPercentage,
-        }
-      })
-
+      const results = await Promise.all(
+        SYMBOLS.map(async sym => {
+          const url = `${YF_BASE}/${sym}?interval=1d&range=1d`
+          const r = await fetch(url, { headers: HEADERS })
+          const json = await r.json()
+          const meta = json.chart.result[0].meta
+          const price     = meta.regularMarketPrice
+          const prev      = meta.previousClose || meta.chartPreviousClose
+          const change    = price - prev
+          const changePct = (change / prev) * 100
+          return [sym, { price, change, changePct }]
+        })
+      )
+      const data = Object.fromEntries(results)
       res.setHeader('Cache-Control', 's-maxage=300')
       return res.status(200).json(data)
     }
 
     // ── MODE 2: historical OHLCV for chart ────────────────────────────────────
     if (mode === 'history') {
-      const days = RANGE_DAYS[range] || 100
-      const from = dateStr(days)
-      const to   = dateStr(0)
+      const yfRange = YF_RANGE[range] || '3mo'
 
-      // Fetch all symbols in parallel
       const results = await Promise.all(
         SYMBOLS.map(async sym => {
-          const url = `${BASE}/historical-price-full/${sym}?from=${from}&to=${to}&apikey=${key}`
-          const r = await fetch(url)
-          if (!r.ok) return [sym, []]
+          const url = `${YF_BASE}/${sym}?interval=1d&range=${yfRange}`
+          const r = await fetch(url, { headers: HEADERS })
           const json = await r.json()
-          // FMP returns { symbol, historical: [{date, open, high, low, close, volume},...] }
-          // sorted newest-first — reverse to chronological
-          const hist = (json.historical || []).reverse()
-          return [sym, hist.map(d => ({ date: d.date, close: d.close }))]
+          const result = json.chart.result[0]
+          const timestamps = result.timestamp || []
+          const closes     = result.indicators.quote[0].close || []
+
+          // Build [{date, close}] array, skip nulls
+          const series = timestamps
+            .map((ts, i) => ({
+              date:  new Date(ts * 1000).toISOString().split('T')[0],
+              close: closes[i]
+            }))
+            .filter(pt => pt.close != null)
+
+          return [sym, series]
         })
       )
 
       const data = Object.fromEntries(results)
-      res.setHeader('Cache-Control', 's-maxage=3600') // history changes less often
+      res.setHeader('Cache-Control', 's-maxage=3600')
       return res.status(200).json(data)
     }
 
