@@ -479,11 +479,7 @@ function HouseholdBanner({ prices, vtiReturnPct, historyForRange, loadingHistory
   const jordanAllPositions = Object.values(JORDAN_ACCOUNTS).flatMap(a => a.positions)
   const jTotal = accountTotal(jordanAllPositions, prices)
 
-  const emilyTotal = EMILY_POSITIONS.reduce((sum, p) => {
-    const ret = seriesReturn(historyForRange?.[p.id])
-    const val = p.dollarInvested * (1 + ret / 100)
-    return { cost: sum.cost + p.dollarInvested, value: sum.value + val }
-  }, { cost: 0, value: 0 })
+  const emilyTotal = accountTotal(EMILY_POSITIONS, prices)
 
   const householdValue   = jTotal.totalValue + emilyTotal.value
   const householdCost    = jTotal.totalCost  + emilyTotal.cost
