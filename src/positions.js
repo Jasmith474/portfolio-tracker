@@ -40,9 +40,9 @@ export const JORDAN_ACCOUNTS = {
 }
 
 export const EMILY_POSITIONS = [
-  { id: "QQQM", dollarInvested: 43000 },
-  { id: "SOXX", dollarInvested: 26000 },
-  { id: "SMH",  dollarInvested: 16000 },
+  { id: "QQQM", shares: 141.456, costPerShare: 300.99, totalCost: 42576.77 },
+  { id: "SOXX", shares: 46.903,  costPerShare: 556.44, totalCost: 26098.71 },
+  { id: "SMH",  shares: 27.206,  costPerShare: 600.00, totalCost: 16323.47 },
 ]
 
 // All unique tickers we track (+ VTI benchmark)
