@@ -210,16 +210,9 @@ function PositionCard({
 }) {
   const meta = TICKER_META[id] || { name: id, color: '#5f6368', tag: 'SATELLITE' }
   const series = historyForRange?.[id]
-
   // Current value & all-time gain (from cost basis)
   let gain = 0, gainPct = 0, currentValue = 0, cost = 0
-  if (isEmily) {
-    cost = pos.dollarInvested
-    const ret = seriesReturn(series)
-    currentValue = cost * (1 + ret / 100)
-    gain = currentValue - cost
-    gainPct = ret
-  } else if (pos && livePrice) {
+  if (pos && livePrice) {
     cost = pos.totalCost
     currentValue = pos.shares * livePrice
     gain = currentValue - cost
